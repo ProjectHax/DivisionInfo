@@ -3,6 +3,8 @@
 #ifndef PK2WRITER_H_
 #define PK2WRITER_H_
 
+#include <string>
+
 //-----------------------------------------------------------------------------
 
 class PK2Writer
@@ -16,7 +18,7 @@ public:
 
 	// Sets up GfxFileManager.DLL for PK2 operations. This function must be
 	// called first.
-	bool Initialize(const char * gfxDllFilename);
+	bool Initialize(std::string gfxDllFilename);
 
 	// Cleans up GfxFileManager.DLL. This function must be called before the
 	// program exits and after Close if a PK2 file was opened.
@@ -28,7 +30,7 @@ public:
 	// Refer to this guide:
 	// http://www.elitepvpers.de/forum/sro-guides-templates/612789-guide-finding-pk2-blowfish-key-5-easy-steps.html
 	// To get the "base key"
-	bool Open(const char * pk2Filename, void * accessKey, unsigned char accessKeyLen);
+	bool Open(std::string pk2Filename, void * accessKey, unsigned char accessKeyLen);
 
 	// Closes an opened PK2 file. This function must be called before the program
 	// exits and before Deinitialize is called.

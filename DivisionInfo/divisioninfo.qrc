@@ -1,4 +1,5 @@
 <RCC>
-    <qresource prefix="DivisionInfo">
-    </qresource>
+  <qresource prefix="DivisionInfo">
+    <file>icon.png</file>
+  </qresource>
 </RCC>

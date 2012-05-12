@@ -9,6 +9,9 @@
 #include "PK2/PK2Reader.h"
 #include "PK2/PK2Writer.h"
 
+#include <map>
+#include <string>
+
 class DivisionInfo : public QWidget
 {
 	Q_OBJECT
@@ -28,6 +31,20 @@ private:
 	//Closes an open PK2 file
 	void Close();
 
+	//Parses Silkroad version
+	bool LoadVersion();
+
+	//Parses division info
+	bool LoadDivisionInfo();
+
+	//Creates and saves a new version file (SV.T)
+	bool SaveVersion();
+
+	//Creates and saves new division info (DIVISIONINFO.TXT and GATEPORT.TXT)
+	bool SaveDivisionInfo();
+
+	std::map<std::string, std::vector<std::string> > Divisions;
+
 public:
 
 	//Constructor
@@ -41,6 +58,9 @@ private slots:
 	//Opens media.pk2
 	void Open();
 
+	//Saves changes
+	void Save();
+
 	//Adds a division
 	void AddDivision();
 
@@ -52,6 +72,12 @@ private slots:
 
 	//Removes a gateway server
 	void RemoveGateway();
+
+	//Division changed
+	void DivisionChanged();
+
+	//Exits the program
+	void Exit() { Close(); close(); }
 };
 
 #endif

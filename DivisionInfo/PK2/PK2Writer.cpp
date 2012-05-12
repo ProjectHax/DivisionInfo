@@ -84,19 +84,22 @@ struct PK2WriterPIMPL
 	}
 
 	// Create the pk2 api access object
-	bool Initialize(const char * gfxDllFilename)
+	bool Initialize(std::string gfxDllFilename)
 	{
 		if(bInit)
 		{
-			err << "Initialize has already been called.";
+			err.str(""); err << "Initialize has already been called.";
 			return false;
 		}
 
+		while(gfxDllFilename.find("/") != std::string::npos)
+			gfxDllFilename.replace(gfxDllFilename.find("/"), 1, "\\");
+
 		// Try to load the DLL
-		hDLL = LoadLibraryA(gfxDllFilename);
+		hDLL = LoadLibraryA(gfxDllFilename.c_str());
 		if(hDLL == NULL)
 		{
-			err << "LoadLibraryA failed for \"" << gfxDllFilename << "\". Does the file exist in the current path?";
+			err.str(""); err << "LoadLibraryA failed for \"" << gfxDllFilename << "\". Does the file exist in the current path?";
 			return false;
 		}
 
@@ -105,7 +108,7 @@ struct PK2WriterPIMPL
 		if(!GFXDllCreateObject)
 		{
 			FreeLibrary(hDLL);
-			err << "GetProcAddress failed for \"GFXDllCreateObject\" in \"" << gfxDllFilename << "\".";
+			err.str(""); err << "GetProcAddress failed for \"GFXDllCreateObject\" in \"" << gfxDllFilename << "\".";
 			return false;
 		}
 
@@ -114,7 +117,7 @@ struct PK2WriterPIMPL
 		if(!GFXDllReleaseObject)
 		{
 			FreeLibrary(hDLL);
-			err << "GetProcAddress failed for \"GFXDllReleaseObject\" in \"" << gfxDllFilename << "\".";
+			err.str(""); err << "GetProcAddress failed for \"GFXDllReleaseObject\" in \"" << gfxDllFilename << "\".";
 			return false;
 		}
 
@@ -184,13 +187,13 @@ struct PK2WriterPIMPL
 	{
 		if(bInit == false)
 		{
-			err << "Initialize has not yet been called.";
+			err.str(""); err << "Initialize has not yet been called.";
 			return false;
 		}
 
 		if(bLoaded)
 		{
-			err << "A PK2 is currently open. Call Close first.";
+			err.str(""); err << "A PK2 is currently open. Call Close first.";
 			return false;
 		}
 
@@ -254,13 +257,13 @@ struct PK2WriterPIMPL
 	{
 		if(bInit == false)
 		{
-			err << "Initialize has not yet been called.";
+			err.str(""); err << "Initialize has not yet been called.";
 			return false;
 		}
 
 		if(!bLoaded)
 		{
-			err << "Open has not yet been called.";
+			err.str(""); err << "Open has not yet been called.";
 			return false;
 		}
 
@@ -305,25 +308,28 @@ struct PK2WriterPIMPL
 	}
 
 	// Sets a pk2 file to import into
-	bool Open(const char * pk2Filename, void * accessKey, unsigned char accessKeyLen)
+	bool Open(std::string pk2Filename, void * accessKey, unsigned char accessKeyLen)
 	{
 		if(bInit == false)
 		{
-			err << "Initialize has not yet been called.";
+			err.str(""); err << "Initialize has not yet been called.";
 			return false;
 		}
 
 		if(bLoaded)
 		{
-			err << "A PK2 is currently open. Call Close first.";
+			err.str(""); err << "A PK2 is currently open. Call Close first.";
 			return false;
 		}
 
 		if(accessKeyLen == 0 || accessKeyLen > 56)
 		{
-			err << "The key length may only be 1 - 56 bytes long.";
+			err.str(""); err << "The key length may only be 1 - 56 bytes long.";
 			return false;
 		}
+
+		while(pk2Filename.find("/") != std::string::npos)
+			pk2Filename.replace(pk2Filename.find("/"), 1, "\\");
 
 		// Result of a function
 		DWORD dwResult = 0;
@@ -337,7 +343,7 @@ struct PK2WriterPIMPL
 		char * pfilename = loadPk2Filename;
 
 		// Store the values
-		_snprintf_s(loadPk2Filename, MAX_PATH, "%s", pk2Filename);
+		_snprintf_s(loadPk2Filename, MAX_PATH, "%s", pk2Filename.c_str());
 
 		// Store this to use in asm
 		LPVOID ptr1 = pGFXAccess;
@@ -375,7 +381,7 @@ struct PK2WriterPIMPL
 		// Check the result
 		if(dwResult == 0)
 		{
-			err << "There was a problem correctly accessing the GFXFileManager DLL.";
+			err.str(""); err << "There was a problem correctly accessing the GFXFileManager DLL.";
 			return false;
 		}
 
@@ -390,13 +396,13 @@ struct PK2WriterPIMPL
 	{
 		if(bInit == false)
 		{
-			err << "Initialize has not yet been called.";
+			err.str(""); err << "Initialize has not yet been called.";
 			return false;
 		}
 
 		if(!bLoaded)
 		{
-			err << "Open has not yet been called.";
+			err.str(""); err << "Open has not yet been called.";
 			return false;
 		}
 
@@ -447,7 +453,7 @@ struct PK2WriterPIMPL
 		// Check result
 		if(result == 0)
 		{
-			err << "Step 1 Failed.";
+			err.str(""); err << "Step 1 Failed.";
 			return false;
 		}
 
@@ -490,7 +496,7 @@ struct PK2WriterPIMPL
 		// Check result
 		if(result == 0)
 		{
-			err << "Step 2 Failed.";
+			err.str(""); err << "Step 2 Failed.";
 			return false;
 		}
 
@@ -509,7 +515,7 @@ struct PK2WriterPIMPL
 		// Check result
 		if(result == 0)
 		{
-			err << "Step 3 Failed.";
+			err.str(""); err << "Step 3 Failed.";
 			return false;
 		}
 
@@ -521,13 +527,13 @@ struct PK2WriterPIMPL
 	{
 		if(bInit == false)
 		{
-			err << "Initialize has not yet been called.";
+			err.str(""); err << "Initialize has not yet been called.";
 			return false;
 		}
 
 		if(!bLoaded)
 		{
-			err << "Open has not yet been called.";
+			err.str(""); err << "Open has not yet been called.";
 			return false;
 		}
 
@@ -547,7 +553,7 @@ struct PK2WriterPIMPL
 		hFile = CreateFileA(inputFilename, GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
 		if(hFile == INVALID_HANDLE_VALUE)
 		{
-			err << "Could not open the input file: \"" << inputFilename << "\".";
+			err.str(""); err << "Could not open the input file: \"" << inputFilename << "\".";
 			return false;
 		}
 
@@ -579,7 +585,7 @@ struct PK2WriterPIMPL
 				// Close the handle
 				CloseHandle(hFile);
 
-				err << "Could not read from the input file.";
+				err.str(""); err << "Could not read from the input file.";
 				return false;
 			}
 
@@ -589,7 +595,7 @@ struct PK2WriterPIMPL
 				// Close the handle
 				CloseHandle(hFile);
 
-				err << "Could not read all of the data from the input file.";
+				err.str(""); err << "Could not read all of the data from the input file.";
 				return false;
 			}
 		}
@@ -628,7 +634,7 @@ PK2Writer::~PK2Writer()
 
 //-----------------------------------------------------------------------------
 
-bool PK2Writer::Initialize(const char * gfxDllFilename)
+bool PK2Writer::Initialize(std::string gfxDllFilename)
 {
 	return m_PK2WriterPIMPL->Initialize(gfxDllFilename);
 }
@@ -642,7 +648,7 @@ bool PK2Writer::Deinitialize()
 
 //-----------------------------------------------------------------------------
 
-bool PK2Writer::Open(const char * pk2Filename, void * accessKey, unsigned char accessKeyLen)
+bool PK2Writer::Open(std::string pk2Filename, void * accessKey, unsigned char accessKeyLen)
 {
 	return m_PK2WriterPIMPL->Open(pk2Filename, accessKey, accessKeyLen);
 }

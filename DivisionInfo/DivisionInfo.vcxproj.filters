@@ -28,6 +28,9 @@
     <Filter Include="PK2">
       <UniqueIdentifier>{5d67080d-ef8e-4f53-8185-dfaa9c230813}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Stream">
+      <UniqueIdentifier>{e3ea2257-ea46-4e17-80b5-4240172081e7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GeneratedFiles\Debug\moc_divisioninfo.cpp">
@@ -46,9 +49,6 @@
     <ClCompile Include="PK2\blowfish.cpp">
       <Filter>PK2</Filter>
     </ClCompile>
-    <ClCompile Include="PK2\PK2Builder.cpp">
-      <Filter>PK2</Filter>
-    </ClCompile>
     <ClCompile Include="PK2\PK2Reader.cpp">
       <Filter>PK2</Filter>
     </ClCompile>
@@ -57,6 +57,9 @@
     </ClCompile>
     <ClCompile Include="PK2\shared_io.cpp">
       <Filter>PK2</Filter>
+    </ClCompile>
+    <ClCompile Include="Stream\stream_utility.cpp">
+      <Filter>Stream</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -80,9 +83,6 @@
     <ClInclude Include="PK2\PK2.h">
       <Filter>PK2</Filter>
     </ClInclude>
-    <ClInclude Include="PK2\PK2Builder.h">
-      <Filter>PK2</Filter>
-    </ClInclude>
     <ClInclude Include="PK2\PK2Reader.h">
       <Filter>PK2</Filter>
     </ClInclude>
@@ -92,5 +92,21 @@
     <ClInclude Include="PK2\shared_io.h">
       <Filter>PK2</Filter>
     </ClInclude>
+    <ClInclude Include="Stream\stream_utility.h">
+      <Filter>Stream</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Generated Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="icon.ico">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="DivisionInfo.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>

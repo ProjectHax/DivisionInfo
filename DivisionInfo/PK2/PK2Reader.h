@@ -14,17 +14,23 @@
 #include <string>
 #include "PK2.h"
 
+#include <boost/thread/mutex.hpp>
+#include <boost/iostreams/device/mapped_file.hpp>
+
 //-----------------------------------------------------------------------------
 
 class PK2Reader
 {
 private:
-	FILE * m_file;
+
+	boost::iostreams::mapped_file file;
 	PK2Header m_header;
 	int64_t m_root_offset;
 	Blowfish m_blowfish;
 	std::stringstream m_error;
 	std::map<std::string, PK2Entry> m_cache;
+
+	boost::mutex m;
 
 private:
 	PK2Reader & operator = (const PK2Reader & rhs);
@@ -53,7 +59,7 @@ public:
 
 	// Opens/Closes a PK2 file. There is no overhead for these functions and the file
 	// remains open until Close is explicitly called or the PK2Reader object is destroyed.
-	bool Open(const char * filename);
+	bool Open(std::string filename);
 	void Close();
 
 	// Returns true of an entry was found with the 'pathname' using 'entry' as the parent. If
@@ -75,6 +81,8 @@ public:
 	// Users are advised to use on common buffer to reduce the need for frequent memory 
 	// reallocations on the vector side.
 	bool ExtractToMemory(PK2Entry & entry, std::vector<uint8_t> & buffer);
+
+	const char* Extract(PK2Entry & entry);
 };
 
 //-----------------------------------------------------------------------------

@@ -2,9 +2,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>
-#include "shared_io.h"
 
 //-----------------------------------------------------------------------------
+
+const char* file_seek(boost::iostreams::mapped_file & file, int64_t offset)
+{
+	return file.const_data() + offset;
+}
+
+int64_t file_tell(boost::iostreams::mapped_file & file, const char* offset)
+{
+	return offset - file.const_data();
+}
 
 int MakePathSlashWindows_1(int ch)
 {
@@ -46,7 +55,6 @@ void PK2Reader::Cache(std::string & base_name, PK2Entry & e)
 PK2Reader::PK2Reader()
 {
 	m_root_offset = 0;
-	m_file = 0;
 	memset(&m_header, 0, sizeof(PK2Header));
 	SetDecryptionKey();
 }
@@ -62,6 +70,7 @@ PK2Reader::~PK2Reader()
 
 size_t PK2Reader::GetCacheSize()
 {
+	boost::mutex::scoped_lock lock(m);
 	return m_cache.size();
 }
 
@@ -69,6 +78,7 @@ size_t PK2Reader::GetCacheSize()
 
 void PK2Reader::ClearCache()
 {
+	boost::mutex::scoped_lock lock(m);
 	m_cache.clear();
 }
 
@@ -76,6 +86,8 @@ void PK2Reader::ClearCache()
 
 std::string PK2Reader::GetError()
 {
+	boost::mutex::scoped_lock lock(m);
+
 	std::string e = m_error.str();
 	m_error.str("");
 	return e;
@@ -85,6 +97,8 @@ std::string PK2Reader::GetError()
 
 void PK2Reader::SetDecryptionKey(char * ascii_key, uint8_t ascii_key_length, char * base_key, uint8_t base_key_length)
 {
+	boost::mutex::scoped_lock lock(m);
+
 	if(ascii_key_length > 56)
 	{
 		ascii_key_length = 56;
@@ -110,10 +124,11 @@ void PK2Reader::SetDecryptionKey(char * ascii_key, uint8_t ascii_key_length, cha
 
 void PK2Reader::Close()
 {
-	if(m_file)
+	boost::mutex::scoped_lock lock(m);
+
+	if(file.is_open())
 	{
-		fclose(m_file);
-		m_file = 0;
+		file.close();
 	}
 
 	m_cache.clear();
@@ -124,54 +139,65 @@ void PK2Reader::Close()
 
 //-----------------------------------------------------------------------------
 
-bool PK2Reader::Open(const char * filename)
+bool PK2Reader::Open(std::string filename)
 {
+	boost::mutex::scoped_lock lock(m);
+
 	size_t read_count = 0;
 
-	if(m_file != 0)
+	if(file.is_open())
 	{
 		m_error.str(""); m_error << "There is already a PK2 opened.";
 		return false;
 	}
 
-	std::string temp(filename);
-	while(temp.find("/") != std::string::npos) temp.replace(temp.find("/"), 1, "\\");
+#if _WIN32
+	while(filename.find("/") != std::string::npos)
+		filename.replace(filename.find("/"), 1, "\\");
+#endif
 
-	fopen_s(&m_file, temp.c_str(), "rb");
-	if(m_file == 0)
+	try
+	{
+		boost::iostreams::mapped_file_params params;
+		params.path = filename;
+		params.flags = boost::iostreams::mapped_file_base::readonly;
+		file.open(params);
+	}
+	catch(std::exception & e)
+	{
+		m_error.str(""); m_error << "Could not open the file \"" << filename << "\".\n" << e.what();
+		return false;
+	}
+
+	if(!file.is_open())
 	{
 		m_error.str(""); m_error << "Could not open the file \"" << filename << "\".";
 		return false;
 	}
 
-	read_count = fread(&m_header, 1, sizeof(PK2Header), m_file);
-	if(read_count != sizeof(PK2Header))
-	{
-		fclose(m_file);
-		m_file = 0;
-		m_error.str(""); m_error << "Could not read in the PK2Header.";
-		return false;
-	}
+	const char* file_base = file.const_data();
+
+	memcpy(&m_header, file_base, sizeof(PK2Header));
+	file_base += sizeof(PK2Header);
 
 	char name[30] = {0};
 	memcpy(name, "JoyMax File Manager!\n", 21);
 	if(memcmp(name, m_header.name, 30) != 0)
 	{
-		fclose(m_file);
-		m_file = 0;
+		file.close();
 		m_error.str(""); m_error << "Invalid PK2 name.";
 		return false;
 	}
 
 	if(m_header.version != 0x01000002)
 	{
-		fclose(m_file);
-		m_file = 0;
+		file.close();
+		file_base = 0;
 		m_error.str(""); m_error << "Invalid PK2 version.";
 		return false;
 	}
 
-	m_root_offset = file_tell(m_file);
+	m_root_offset = file_tell(file, file_base);
 
 	if(m_header.encryption == 0)
 	{
@@ -184,8 +210,8 @@ bool PK2Reader::Open(const char * filename)
 
 	if(memcmp(verify, m_header.verify, 16) != 0)
 	{
-		fclose(m_file);
-		m_file = 0;
+		file.close();
+		file_base = 0;
 		m_error.str(""); m_error << "Invalid Blowfish key.";
 		return false;
 	}
@@ -197,7 +223,9 @@ bool PK2Reader::Open(const char * filename)
 
 bool PK2Reader::GetEntries(PK2Entry & parent, std::list<PK2Entry> & entries)
 {
-	if(m_file == 0)
+	boost::mutex::scoped_lock lock(m);
+
+	if(!file.is_open())
 	{
 		m_error.str(""); m_error << "There is no PK2 loaded yet.";
 		return false;
@@ -218,20 +246,12 @@ bool PK2Reader::GetEntries(PK2Entry & parent, std::list<PK2Entry> & entries)
 		return false;
 	}
 
-	if(file_seek(m_file, parent.position, SEEK_SET) != 0)
-	{
-		m_error.str(""); m_error << "Invalid seek index.";
-		return false;
-	}
+	const char* file_base = file_seek(file, parent.position);
 
 	while(true)
 	{
-		read_count = fread(&block, 1, sizeof(PK2EntryBlock), m_file);
-		if(read_count != sizeof(PK2EntryBlock))
-		{
-			m_error.str(""); m_error << "Could not read a PK2EntryBlock object";
-			return false;
-		}
+		memcpy(&block, file_base, sizeof(PK2EntryBlock));
+		file_base += sizeof(PK2EntryBlock);
 
 		for(int x = 0; x < 20; ++x)
 		{
@@ -258,11 +278,7 @@ bool PK2Reader::GetEntries(PK2Entry & parent, std::list<PK2Entry> & entries)
 		if(block.entries[19].nextChain)
 		{
 			// More entries in the current directory
-			if(file_seek(m_file, block.entries[19].nextChain, SEEK_SET) != 0)
-			{
-				m_error.str(""); m_error << "Invalid seek index for nextChain.";
-				return false;
-			}
+			file_base = file_seek(file, block.entries[19].nextChain);
 		}
 		else
 		{
@@ -278,7 +294,9 @@ bool PK2Reader::GetEntries(PK2Entry & parent, std::list<PK2Entry> & entries)
 
 bool PK2Reader::GetEntry(const char * pathname, PK2Entry & entry)
 {
-	if(m_file == 0)
+	boost::mutex::scoped_lock lock(m);
+
+	if(!file.is_open())
 	{
 		m_error.str(""); m_error << "There is no PK2 loaded yet.";
 		return false;
@@ -301,22 +319,15 @@ bool PK2Reader::GetEntry(const char * pathname, PK2Entry & entry)
 	PK2EntryBlock block;
 	size_t read_count = 0;
 	std::string name;
+	const char* file_base = 0;
 
 	if(entry.position == 0)
 	{
-		if(file_seek(m_file, m_root_offset, SEEK_SET) != 0)
-		{
-			m_error.str(""); m_error << "Invalid seek index.";
-			return false;
-		}
+		file_base = file_seek(file, m_root_offset);
 	}
 	else
 	{
-		if(file_seek(m_file, entry.position, SEEK_SET) != 0)
-		{
-			m_error.str(""); m_error << "Invalid seek index.";
-			return false;
-		}
+		file_base = file_seek(file, entry.position);
 	}
 
 	while(!tokens.empty())
@@ -324,12 +335,8 @@ bool PK2Reader::GetEntry(const char * pathname, PK2Entry & entry)
 		std::string path = tokens.front();
 		tokens.pop_front();
 
-		read_count = fread(&block, 1, sizeof(PK2EntryBlock), m_file);
-		if(read_count != sizeof(PK2EntryBlock))
-		{
-			m_error.str(""); m_error << "Could not read a PK2EntryBlock object";
-			return false;
-		}
+		memcpy(&block, file_base, sizeof(PK2EntryBlock));
+		file_base += sizeof(PK2EntryBlock);
 
 		bool cycle = false;
 
@@ -376,11 +383,7 @@ bool PK2Reader::GetEntry(const char * pathname, PK2Entry & entry)
 					// bugs could result.
 					if(e.type == 1)
 					{
-						if(file_seek(m_file, e.position, SEEK_SET) != 0)
-						{
-							m_error.str(""); m_error << "Invalid seek index.";
-							return false;
-						}
+						file_base = file_seek(file, e.position);
 						cycle = true;
 						break;
 					}
@@ -402,11 +405,7 @@ bool PK2Reader::GetEntry(const char * pathname, PK2Entry & entry)
 		// More entries to search in the current directory
 		if(block.entries[19].nextChain)
 		{
-			if(file_seek(m_file, block.entries[19].nextChain, SEEK_SET) != 0)
-			{
-				m_error.str(""); m_error << "Invalid seek index for nextChain.";
-				return false;
-			}
+			file_base = file_seek(file, block.entries[19].nextChain);
 			tokens.push_front(path);
 			continue;
 		}
@@ -424,7 +423,9 @@ bool PK2Reader::GetEntry(const char * pathname, PK2Entry & entry)
 
 bool PK2Reader::ForEachEntryDo(bool (* UserFunc)(PK2Reader *, const std::string &, PK2EntryBlock &, void *), void * userdata)
 {
-	if(m_file == 0)
+	boost::mutex::scoped_lock lock(m);
+
+	if(!file.is_open())
 	{
 		m_error.str(""); m_error << "There is no PK2 loaded yet.";
 		return false;
@@ -433,11 +434,7 @@ bool PK2Reader::ForEachEntryDo(bool (* UserFunc)(PK2Reader *, const std::string 
 	PK2EntryBlock block;
 	size_t read_count = 0;
 
-	if(file_seek(m_file, m_root_offset, SEEK_SET) != 0)
-	{
-		m_error.str(""); m_error << "Invalid seek index.";
-		return false;
-	}
+	const char* file_base = file_seek(file, m_root_offset);
 
 	std::list<PK2Entry> folders;
 	std::list<std::string> paths;
@@ -450,11 +447,8 @@ bool PK2Reader::ForEachEntryDo(bool (* UserFunc)(PK2Reader *, const std::string 
 		{
 			PK2Entry e = folders.front();
 			folders.pop_front();
-			if(file_seek(m_file, e.position, SEEK_SET) != 0)
-			{
-				m_error.str(""); m_error << "Invalid seek index.";
-				return false;
-			}
+
+			file_base = file_seek(file, e.position);
 		}
 
 		if(!paths.empty())
@@ -463,12 +457,8 @@ bool PK2Reader::ForEachEntryDo(bool (* UserFunc)(PK2Reader *, const std::string 
 			paths.pop_front();
 		}
 
-		read_count = fread(&block, 1, sizeof(PK2EntryBlock), m_file);
-		if(read_count != sizeof(PK2EntryBlock))
-		{
-			m_error.str(""); m_error << "Could not read a PK2EntryBlock object";
-			return false;
-		}
+		memcpy(&block, file_base, sizeof(PK2EntryBlock));
+		file_base += sizeof(PK2EntryBlock);
 
 		for(int x = 0; x < 20; ++x)
 		{
@@ -531,6 +521,8 @@ bool PK2Reader::ForEachEntryDo(bool (* UserFunc)(PK2Reader *, const std::string 
 
 bool PK2Reader::ExtractToMemory(PK2Entry & entry, std::vector<uint8_t> & buffer)
 {
+	boost::mutex::scoped_lock lock(m);
+
 	if(entry.type != 2)
 	{
 		m_error.str(""); m_error << "The entry is not a file.";
@@ -541,15 +533,15 @@ bool PK2Reader::ExtractToMemory(PK2Entry & entry, std::vector<uint8_t> & buffer)
 	{
 		return true;
 	}
-	file_seek(m_file, entry.position, SEEK_SET);
-	size_t read_count = fread(&buffer[0], 1, entry.size, m_file);
-	if(read_count != entry.size)
-	{
-		buffer.clear();
-		m_error.str(""); m_error << "Could read all of the file data.";
-		return false;
-	}
+
+	const char* file_base = file_seek(file, entry.position);
+	memcpy(&buffer[0], file_base, entry.size);
+
 	return true;
 }
 
+const char* PK2Reader::Extract(PK2Entry & entry)
+{
+	return file_seek(file, entry.position);
+}
 //-----------------------------------------------------------------------------
