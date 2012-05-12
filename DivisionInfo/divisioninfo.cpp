@@ -20,6 +20,9 @@ DivisionInfo::~DivisionInfo()
 //Opens media.pk2
 void DivisionInfo::Open()
 {
+	//Close the PK2 first
+	Close();
+
 	//File dialog
 	QFileDialog dlg(this);
 	dlg.setFileMode(QFileDialog::Directory);
@@ -31,10 +34,26 @@ void DivisionInfo::Open()
 		QStringList folders = dlg.selectedFiles();
 		if(!folders.empty())
 		{
-			path = folders[0];
+			path = folders[0] + "/Media.pk2";
 			ui.SilkroadPath->setText(path);
+
+			if(pk2reader.Open(path.toAscii().data()))
+			{
+
+			}
+			else
+			{
+				QMessageBox::critical(this, "Error", pk2reader.GetError().c_str());
+			}
 		}
 	}
+}
+
+//Closes an open PK2 file
+void DivisionInfo::Close()
+{
+	pk2reader.Close();
+	pk2writer.Close();
 }
 
 //Adds a division

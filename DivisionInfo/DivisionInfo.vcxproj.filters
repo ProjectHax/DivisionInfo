@@ -25,6 +25,9 @@
       <UniqueIdentifier>{99349809-55BA-4b9d-BF79-8FDBB0286EB3}</UniqueIdentifier>
       <Extensions>ui</Extensions>
     </Filter>
+    <Filter Include="PK2">
+      <UniqueIdentifier>{5d67080d-ef8e-4f53-8185-dfaa9c230813}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="GeneratedFiles\Debug\moc_divisioninfo.cpp">
@@ -40,6 +43,21 @@
       <Filter>Resource Files</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="PK2\blowfish.cpp">
+      <Filter>PK2</Filter>
+    </ClCompile>
+    <ClCompile Include="PK2\PK2Builder.cpp">
+      <Filter>PK2</Filter>
+    </ClCompile>
+    <ClCompile Include="PK2\PK2Reader.cpp">
+      <Filter>PK2</Filter>
+    </ClCompile>
+    <ClCompile Include="PK2\PK2Writer.cpp">
+      <Filter>PK2</Filter>
+    </ClCompile>
+    <ClCompile Include="PK2\shared_io.cpp">
+      <Filter>PK2</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="divisioninfo.ui">
@@ -55,6 +73,24 @@
   <ItemGroup>
     <ClInclude Include="GeneratedFiles\ui_divisioninfo.h">
       <Filter>Generated Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PK2\blowfish.h">
+      <Filter>PK2</Filter>
+    </ClInclude>
+    <ClInclude Include="PK2\PK2.h">
+      <Filter>PK2</Filter>
+    </ClInclude>
+    <ClInclude Include="PK2\PK2Builder.h">
+      <Filter>PK2</Filter>
+    </ClInclude>
+    <ClInclude Include="PK2\PK2Reader.h">
+      <Filter>PK2</Filter>
+    </ClInclude>
+    <ClInclude Include="PK2\PK2Writer.h">
+      <Filter>PK2</Filter>
+    </ClInclude>
+    <ClInclude Include="PK2\shared_io.h">
+      <Filter>PK2</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

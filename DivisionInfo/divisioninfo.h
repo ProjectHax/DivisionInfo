@@ -6,6 +6,9 @@
 #include <QtGui/QWidget>
 #include "ui_divisioninfo.h"
 
+#include "PK2/PK2Reader.h"
+#include "PK2/PK2Writer.h"
+
 class DivisionInfo : public QWidget
 {
 	Q_OBJECT
@@ -17,6 +20,13 @@ private:
 
 	//Path to media.pk2
 	QString path;
+	
+	//PK2 API's
+	PK2Reader pk2reader;
+	PK2Writer pk2writer;
+
+	//Closes an open PK2 file
+	void Close();
 
 public:
 

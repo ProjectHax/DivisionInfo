@@ -94,6 +94,11 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="PK2\blowfish.cpp" />
+    <ClCompile Include="PK2\PK2Builder.cpp" />
+    <ClCompile Include="PK2\PK2Reader.cpp" />
+    <ClCompile Include="PK2\PK2Writer.cpp" />
+    <ClCompile Include="PK2\shared_io.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="divisioninfo.h">
@@ -122,6 +127,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GeneratedFiles\ui_divisioninfo.h" />
+    <ClInclude Include="PK2\blowfish.h" />
+    <ClInclude Include="PK2\PK2.h" />
+    <ClInclude Include="PK2\PK2Builder.h" />
+    <ClInclude Include="PK2\PK2Reader.h" />
+    <ClInclude Include="PK2\PK2Writer.h" />
+    <ClInclude Include="PK2\shared_io.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="divisioninfo.qrc">
