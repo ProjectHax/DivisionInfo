@@ -277,6 +277,9 @@ void DivisionInfo::RemoveDivision()
 
 		//Clear gateway list
 		ui.lstGateways->clear();
+
+		//Reload gateway servers
+		DivisionChanged();
 	}
 }
 
