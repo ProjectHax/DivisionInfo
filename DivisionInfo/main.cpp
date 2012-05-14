@@ -2,6 +2,7 @@
 #include "divisioninfo.h"
 #include <QtGui/QApplication>
 
+#if _DEBUG
 #include "windows.h"
 #include "io.h"
 #include "fcntl.h"
@@ -38,6 +39,7 @@ void CreateConsole(const char *winTitle)
 	*stderr = *fp;
 	setvbuf(stderr, NULL, _IONBF, 0);
 }
+#endif
 
 int main(int argc, char *argv[])
 {
