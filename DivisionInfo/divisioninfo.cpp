@@ -359,7 +359,6 @@ bool DivisionInfo::LoadVersion()
 
 	if(size > 8)
 		return false;
-		//throw std::runtime_error("Could not decode SV.T - size is incorrect");
 
 	std::string version;
 	version.resize(size);
@@ -450,6 +449,16 @@ bool DivisionInfo::SaveVersion()
 
 	w.SeekRead(0, Seek_Set);
 
+#if _DEBUG
+	printf("SV.T\n");
+	while((w.GetReadStreamSize() - w.GetReadIndex()) > 0)
+	{
+		printf("%.2X ", w.Read<uint8_t>());
+	}
+	printf("\n\n");
+	w.SeekRead(0, Seek_Set);
+#endif
+
 	return pk2writer.ImportFile("SV.T", (void*)w.GetStreamPtr(), w.GetStreamSize());
 }
 
@@ -497,6 +506,17 @@ bool DivisionInfo::SaveDivisionInfo()
 	}
 
 	w.SeekRead(0, Seek_Set);
+
+#if _DEBUG
+	printf("DIVISIONINFO.TXT\n");
+	while((w.GetReadStreamSize() - w.GetReadIndex()) > 0)
+	{
+		printf("%.2X ", w.Read<uint8_t>());
+	}
+	printf("\n\n");
+	w.SeekRead(0, Seek_Set);
+#endif
+
 	if(!pk2writer.ImportFile("DIVISIONINFO.TXT", (void*)w.GetStreamPtr(), w.GetStreamSize()))
 		return false;
 
@@ -509,5 +529,16 @@ bool DivisionInfo::SaveDivisionInfo()
 		w.Write<uint8_t>(0);
 
 	w.SeekRead(0, Seek_Set);
+
+#if _DEBUG
+	printf("GATEPORT.TXT\n");
+	while((w.GetReadStreamSize() - w.GetReadIndex()) > 0)
+	{
+		printf("%.2X ", w.Read<uint8_t>());
+	}
+	printf("\n\n");
+	w.SeekRead(0, Seek_Set);
+#endif
+
 	return pk2writer.ImportFile("GATEPORT.TXT", (void*)w.GetStreamPtr(), w.GetStreamSize());
 }
