@@ -4,3 +4,13 @@ Requirements:
 Visual Studio 2010
 Boost
 Qt
+
+There might be a slight issue when trying to open large Media.pk2
+files. It will spit out an error telling you there is not enough
+memory. No clue why this happens since there is plenty of address
+space for an 850MB PK2 file. And if you try to open a PK2 file
+a couple times eventually it will open the file successfully.
+Again, I have no idea what the problem is.
+
+Don't forget to update the boost folder in settings to your own.
+Otherwise you won't be able to compile it.
