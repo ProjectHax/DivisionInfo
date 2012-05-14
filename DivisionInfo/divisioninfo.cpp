@@ -71,6 +71,9 @@ void DivisionInfo::Open()
 				//Select the first division
 				if(Divisions.size())
 					ui.lstDivisions->setCurrentRow(0);
+
+				//PK2 reader is no longer needed
+				pk2reader.Close();
 			}
 			else
 			{
@@ -111,7 +114,6 @@ void DivisionInfo::Save()
 	//Make sure there is a valid path
 	if(!path.isEmpty())
 	{
-		pk2reader.Close();
 		bool error = false;
 
 		if(!pk2writer.Initialize(std::string(path.toAscii().data()) + "/GFXFileManager.dll"))
@@ -122,8 +124,8 @@ void DivisionInfo::Save()
 
 		char * keys[2] =
 		{
-			"169841",
-			"\x32\x30\x30\x39\xC4\xEA"
+			"169841",						//iSRO/SilkroadR/MySRO/vSRO
+			"\x32\x30\x30\x39\xC4\xEA"		//ZSZC/SWSRO
 		};
 
 		bool open = false;
@@ -156,7 +158,8 @@ void DivisionInfo::Save()
 			QMessageBox::critical(this, "Error", "There was a problem saving the division info (Media.pk2/DIVISIONINFO.TXT or Media.pk2/GATEPORT.TXT)");
 			error = true;
 		}
-
+		
+		//PK2 writer cleanup
 		pk2writer.Close();
 		pk2writer.Deinitialize();
 
@@ -420,6 +423,7 @@ bool DivisionInfo::LoadDivisionInfo()
 	QString temp(pk2reader.Extract(entry));
 	ui.Port->setText(temp);
 
+	//Success
 	return true;
 }
 
@@ -445,9 +449,8 @@ bool DivisionInfo::SaveVersion()
 		w.Write<uint8_t>(0);
 
 	w.SeekRead(0, Seek_Set);
-	pk2writer.ImportFile("SV.T", (void*)w.GetStreamPtr(), w.GetStreamSize());
 
-	return true;
+	return pk2writer.ImportFile("SV.T", (void*)w.GetStreamPtr(), w.GetStreamSize());
 }
 
 //Creates and saves new division info (DIVISIONINFO.TXT and GATEPORT.TXT)
@@ -494,7 +497,8 @@ bool DivisionInfo::SaveDivisionInfo()
 	}
 
 	w.SeekRead(0, Seek_Set);
-	pk2writer.ImportFile("DIVISIONINFO.TXT", (void*)w.GetStreamPtr(), w.GetStreamSize());
+	if(!pk2writer.ImportFile("DIVISIONINFO.TXT", (void*)w.GetStreamPtr(), w.GetStreamSize()))
+		return false;
 
 	//Port
 	w.Clear();
@@ -505,7 +509,5 @@ bool DivisionInfo::SaveDivisionInfo()
 		w.Write<uint8_t>(0);
 
 	w.SeekRead(0, Seek_Set);
-	pk2writer.ImportFile("GATEPORT.TXT", (void*)w.GetStreamPtr(), w.GetStreamSize());
-
-	return true;
+	return pk2writer.ImportFile("GATEPORT.TXT", (void*)w.GetStreamPtr(), w.GetStreamSize());
 }
