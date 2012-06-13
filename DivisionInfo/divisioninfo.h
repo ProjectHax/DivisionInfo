@@ -78,6 +78,9 @@ private slots:
 
 	//Exits the program
 	void Exit() { Close(); close(); }
+
+	//Context menu
+	void ContextMenu(const QPoint & pos);
 };
 
 #endif

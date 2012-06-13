@@ -86,6 +86,9 @@
       <height>161</height>
      </rect>
     </property>
+    <property name="contextMenuPolicy">
+     <enum>Qt::CustomContextMenu</enum>
+    </property>
    </widget>
    <widget class="QPushButton" name="btnAddDivision">
     <property name="geometry">
@@ -230,6 +233,9 @@
       <width>531</width>
       <height>161</height>
      </rect>
+    </property>
+    <property name="contextMenuPolicy">
+     <enum>Qt::CustomContextMenu</enum>
     </property>
    </widget>
    <widget class="QPushButton" name="btnAddGateway">

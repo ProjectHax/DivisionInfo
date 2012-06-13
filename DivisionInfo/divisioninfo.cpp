@@ -3,6 +3,7 @@
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QMessageBox>
+#include <QClipboard>
 
 #include "Stream/stream_utility.h"
 #include <boost/lexical_cast.hpp>
@@ -17,6 +18,10 @@ DivisionInfo::DivisionInfo(QWidget *parent, Qt::WFlags flags) : QWidget(parent, 
 	connect(ui.actionOpen, SIGNAL(triggered()), this, SLOT(Open()));
 	connect(ui.actionSave, SIGNAL(triggered()), this, SLOT(Save()));
 	connect(ui.actionExit, SIGNAL(triggered()), this, SLOT(Exit()));
+
+	//Context menu
+	connect(ui.lstDivisions, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(ContextMenu(const QPoint &)));
+	connect(ui.lstGateways, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(ContextMenu(const QPoint &)));
 }
 
 //Destructor
@@ -541,4 +546,54 @@ bool DivisionInfo::SaveDivisionInfo()
 #endif
 
 	return pk2writer.ImportFile("GATEPORT.TXT", (void*)w.GetStreamPtr(), w.GetStreamSize());
+}
+
+//Context menu
+void DivisionInfo::ContextMenu(const QPoint & pos)
+{
+	QMenu menu;
+	menu.addAction("Copy");
+
+	if(ui.lstDivisions->hasFocus())
+	{
+		//Find where the user clicked
+		QPoint global = ui.lstDivisions->mapToGlobal(pos);
+		QModelIndex t = ui.lstDivisions->indexAt(pos);
+		
+		//Show menu
+		QAction* item = menu.exec(global);
+		
+		//Make sure an item was selected
+		if(item)
+		{
+			QList<QListWidgetItem*> items = ui.lstDivisions->selectedItems();
+			if(items.size())
+			{
+				//Copy text to clipboard
+				QClipboard* clipboard = QApplication::clipboard();
+				if(clipboard) clipboard->setText(items[0]->text());
+			}
+		}
+	}
+	else if(ui.lstGateways->hasFocus())
+	{
+		//Find where the user clicked
+		QPoint global = ui.lstGateways->mapToGlobal(pos);
+		QModelIndex t = ui.lstGateways->indexAt(pos);
+
+		//Show menu
+		QAction* item = menu.exec(global);
+
+		//Make sure an item was selected
+		if(item)
+		{
+			QList<QListWidgetItem*> items = ui.lstGateways->selectedItems();
+			if(items.size())
+			{
+				//Copy text to clipboard
+				QClipboard* clipboard = QApplication::clipboard();
+				if(clipboard) clipboard->setText(items[0]->text());
+			}
+		}
+	}
 }
