@@ -401,6 +401,15 @@ bool DivisionInfo::LoadDivisionInfo()
 		std::string name = r.Read_Ascii(r.Read<uint32_t>() + 1);
 		name.resize(name.length() - 1);	//Remove null terminator
 
+		//Delete null bytes (stupid people that didn't change the length)
+		size_t nullcount = 0;
+		for(size_t z = 0; z < name.length(); ++z)
+		{
+			if(name[z] == '\0')
+				nullcount++;
+		}
+		name.resize(name.length() - nullcount);
+
 		//Number of servers in this division
 		uint8_t servers = r.Read<uint8_t>();
 
@@ -411,6 +420,15 @@ bool DivisionInfo::LoadDivisionInfo()
 			std::string gateway = r.Read_Ascii(r.Read<uint32_t>() + 1);
 			gateway.resize(gateway.length() - 1);	//Remove null terminator
 
+			//Delete null bytes (stupid people that didn't change the length)
+			nullcount = 0;
+			for(size_t z = 0; z < gateway.length(); ++z)
+			{
+				if(gateway[z] == '\0')
+					nullcount++;
+			}
+			
+			gateway.resize(gateway.length() - nullcount);
 			divisiontemp.push_back(gateway);
 		}
 
