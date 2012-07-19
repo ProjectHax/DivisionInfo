@@ -381,69 +381,85 @@ bool DivisionInfo::LoadVersion()
 //Parses division info
 bool DivisionInfo::LoadDivisionInfo()
 {
-	PK2Entry entry = {0};
-
-	//Division info
-	pk2reader.GetEntry("DIVISIONINFO.TXT", entry);
-	StreamUtility r(pk2reader.Extract(entry), entry.size);
-
-	//Locale and division count
-	uint8_t locale = r.Read<uint8_t>();
-	uint8_t divisons = r.Read<uint8_t>();
-
-	//Set locale in GUI
-	ui.Locale->setText(QString("%0").arg(locale));
-
-	//Iterate divisions
-	for(uint8_t x = 0; x < divisons; ++x)
+	try
 	{
-		//Division name
-		std::string name = r.Read_Ascii(r.Read<uint32_t>() + 1);
-		name.resize(name.length() - 1);	//Remove null terminator
+		PK2Entry entry = {0};
 
-		//Delete null bytes (stupid people that didn't change the length)
-		size_t nullcount = 0;
-		for(size_t z = 0; z < name.length(); ++z)
+		//Division info
+		pk2reader.GetEntry("DIVISIONINFO.TXT", entry);
+		StreamUtility r(pk2reader.Extract(entry), entry.size);
+
+		//Locale and division count
+		uint8_t locale = r.Read<uint8_t>();
+		uint8_t divisons = r.Read<uint8_t>();
+
+		//Set locale in GUI
+		ui.Locale->setText(QString("%0").arg(locale));
+
+		//Iterate divisions
+		for(uint8_t x = 0; x < divisons; ++x)
 		{
-			if(name[z] == '\0')
-				nullcount++;
-		}
-		name.resize(name.length() - nullcount);
+			uint32_t len = r.Read<uint32_t>();
+			if(len >= 255)
+				throw std::exception("Division name length is too large");
 
-		//Number of servers in this division
-		uint8_t servers = r.Read<uint8_t>();
-
-		std::vector<std::string> divisiontemp;
-		for(uint8_t i = 0; i < servers; ++i)
-		{
-			//Gateway hostname or IP
-			std::string gateway = r.Read_Ascii(r.Read<uint32_t>() + 1);
-			gateway.resize(gateway.length() - 1);	//Remove null terminator
+			//Division name
+			std::string name = r.Read_Ascii(len + 1);
+			name.resize(name.length() - 1);	//Remove null terminator
 
 			//Delete null bytes (stupid people that didn't change the length)
-			nullcount = 0;
-			for(size_t z = 0; z < gateway.length(); ++z)
+			size_t nullcount = 0;
+			for(size_t z = 0; z < name.length(); ++z)
 			{
-				if(gateway[z] == '\0')
+				if(name[z] == '\0')
 					nullcount++;
 			}
+			name.resize(name.length() - nullcount);
+
+			//Number of servers in this division
+			uint8_t servers = r.Read<uint8_t>();
+
+			std::vector<std::string> divisiontemp;
+			for(uint8_t i = 0; i < servers; ++i)
+			{
+				//Gateway hostname or IP
+				uint32_t len = r.Read<uint32_t>();
+				if(len >= 255)
+					throw std::exception("Hostname/IP length is too large");
+
+				std::string gateway = r.Read_Ascii(len + 1);
+				gateway.resize(gateway.length() - 1);	//Remove null terminator
+
+				//Delete null bytes (stupid people that didn't change the length)
+				nullcount = 0;
+				for(size_t z = 0; z < gateway.length(); ++z)
+				{
+					if(gateway[z] == '\0')
+						nullcount++;
+				}
 			
-			gateway.resize(gateway.length() - nullcount);
-			divisiontemp.push_back(gateway);
+				gateway.resize(gateway.length() - nullcount);
+				divisiontemp.push_back(gateway);
+			}
+
+			//Save the gateway servers
+			Divisions[name] = divisiontemp;
+
+			//Add the division to the list
+			ui.lstDivisions->addItem(name.c_str());
 		}
 
-		//Save the gateway servers
-		Divisions[name] = divisiontemp;
-
-		//Add the division to the list
-		ui.lstDivisions->addItem(name.c_str());
+		//Port
+		memset(&entry, 0, sizeof(PK2Entry));
+		pk2reader.GetEntry("GATEPORT.TXT", entry);
+		QString temp(pk2reader.Extract(entry));
+		ui.Port->setText(temp);
 	}
-
-	//Port
-	memset(&entry, 0, sizeof(PK2Entry));
-	pk2reader.GetEntry("GATEPORT.TXT", entry);
-	QString temp(pk2reader.Extract(entry));
-	ui.Port->setText(temp);
+	catch(std::exception & e)
+	{
+		QMessageBox::critical(this, "Error", e.what());
+		return false;
+	}
 
 	//Success
 	return true;
