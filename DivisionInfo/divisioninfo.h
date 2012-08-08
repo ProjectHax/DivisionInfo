@@ -8,6 +8,7 @@
 
 #include "PK2/PK2Reader.h"
 #include "PK2/PK2Writer.h"
+#include "Stream/stream_utility.h"
 
 #include <map>
 #include <string>
@@ -37,11 +38,14 @@ private:
 	//Parses division info
 	bool LoadDivisionInfo();
 
-	//Creates and saves a new version file (SV.T)
-	bool SaveVersion();
+	//Create the version file (SV.T)
+	StreamUtility CreateSVT();
 
-	//Creates and saves new division info (DIVISIONINFO.TXT and GATEPORT.TXT)
-	bool SaveDivisionInfo();
+	//Creates division info (DIVISIONINFO.TXT)
+	StreamUtility CreateDivisionInfo();
+
+	//Creates gateway port (GATEPORT.TXT)
+	StreamUtility CreateGatePort();
 
 	std::map<std::string, std::vector<std::string> > Divisions;
 

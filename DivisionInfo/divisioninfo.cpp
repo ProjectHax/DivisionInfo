@@ -141,6 +141,7 @@ void DivisionInfo::Save()
 		bool open = false;
 		for(uint8_t x = 0; x < 2; ++x)
 		{
+			//Attempt to open the PK2 file
 			if(pk2writer.Open(std::string(path.toAscii().data()) + "/Media.pk2", keys[x], 6))
 			{
 				open = true;
@@ -156,19 +157,40 @@ void DivisionInfo::Save()
 		}
 
 		//Save Silkroad version
-		if(!SaveVersion())
+		StreamUtility version = CreateSVT();
+		if(version.GetStreamSize())
 		{
-			QMessageBox::critical(this, "Error", "There was a problem saving the version file (Media.pk2/SV.T)");
-			error = true;
+			//Import the file
+			if(!pk2writer.ImportFile("SV.T", (void*)version.GetStreamPtr(), version.GetStreamSize()))
+			{
+				QMessageBox::critical(this, "Error", "There was a problem saving the version file (Media.pk2/SV.T)");
+				error = true;
+			}
 		}
 
 		//Save division info and gateway port
-		if(!SaveDivisionInfo())
+		StreamUtility division = CreateDivisionInfo();
+		if(division.GetStreamSize())
 		{
-			QMessageBox::critical(this, "Error", "There was a problem saving the division info (Media.pk2/DIVISIONINFO.TXT or Media.pk2/GATEPORT.TXT)");
-			error = true;
+			//Import the file
+			if(!pk2writer.ImportFile("DIVISIONINFO.TXT", (void*)division.GetStreamPtr(), division.GetStreamSize()))
+			{
+				QMessageBox::critical(this, "Error", "There was a problem saving the division info (Media.pk2/DIVISIONINFO.TXT)");
+				error = true;
+			}
 		}
-		
+
+		StreamUtility gateport = CreateGatePort();
+		if(gateport.GetStreamSize())
+		{
+			//Import the file
+			if(!pk2writer.ImportFile("GATEPORT.TXT", (void*)gateport.GetStreamPtr(), gateport.GetStreamSize()))
+			{
+				QMessageBox::critical(this, "Error", "There was a problem saving the division info (Media.pk2/GATEPORT.TXT)");
+				error = true;
+			}
+		}
+
 		//PK2 writer cleanup
 		pk2writer.Close();
 		pk2writer.Deinitialize();
@@ -470,17 +492,24 @@ bool DivisionInfo::LoadDivisionInfo()
 	return true;
 }
 
-//Creates and saves a new version file (SV.T)
-bool DivisionInfo::SaveVersion()
+//Create the version file (SV.T)
+StreamUtility DivisionInfo::CreateSVT()
 {
+	StreamUtility w;
 	std::string version = ui.Version->text().toAscii().data();
+
+	if(version.empty() || version == "0")
+	{
+		QMessageBox::critical(this, "Error", "Version is empty or null");
+		return w;
+	}
+
 	version.resize(8);
 
 	Blowfish bf;
 	bf.Initialize("SILKROADVERSION", 8);
 	bf.Encode(&version[0], 4, &version[0], 8);
 
-	StreamUtility w;
 	w.Write<uint32_t>(8);				//Blowfish output size
 	w.Write<char>(&version[0], 8);		//Version
 	
@@ -503,32 +532,25 @@ bool DivisionInfo::SaveVersion()
 	w.SeekRead(0, Seek_Set);
 #endif
 
-	return pk2writer.ImportFile("SV.T", (void*)w.GetStreamPtr(), w.GetStreamSize());
+	return w;
 }
 
-//Creates and saves new division info (DIVISIONINFO.TXT and GATEPORT.TXT)
-bool DivisionInfo::SaveDivisionInfo()
+//Creates division info (DIVISIONINFO.TXT)
+StreamUtility DivisionInfo::CreateDivisionInfo()
 {
+	StreamUtility w;
+
 	//Retrieve locale and port from the GUI
 	std::string locale = ui.Locale->text().toAscii().data();
-	std::string port = ui.Port->text().toAscii().data();
 
 	//Locale error checking
 	if(locale.empty() || locale == "0")
 	{
 		QMessageBox::critical(this, "Error", "Locale is empty or null");
-		return false;
-	}
-
-	//Port error checking
-	if(port.empty() || port == "0")
-	{
-		QMessageBox::critical(this, "Error", "Port is empty or null");
-		return false;
+		return w;
 	}
 
 	//Create DIVISIONINFO.TXT
-	StreamUtility w;
 	w.Write<uint8_t>(boost::lexical_cast<int>(locale));			//Locale
 	w.Write<uint8_t>(Divisions.size());							//Number of divisions
 
@@ -561,11 +583,22 @@ bool DivisionInfo::SaveDivisionInfo()
 	w.SeekRead(0, Seek_Set);
 #endif
 
-	if(!pk2writer.ImportFile("DIVISIONINFO.TXT", (void*)w.GetStreamPtr(), w.GetStreamSize()))
-		return false;
+	return w;
+}
 
-	//Port
-	w.Clear();
+//Creates gateway port (GATEPORT.TXT)
+StreamUtility DivisionInfo::CreateGatePort()
+{
+	StreamUtility w;
+	std::string port = ui.Port->text().toAscii().data();
+
+	//Port error checking
+	if(port.empty() || port == "0")
+	{
+		QMessageBox::critical(this, "Error", "Port is empty or null");
+		return w;
+	}
+
 	w.Write_Ascii(port);
 
 	//Extra null bytes
@@ -585,7 +618,7 @@ bool DivisionInfo::SaveDivisionInfo()
 	w.SeekRead(0, Seek_Set);
 #endif
 
-	return pk2writer.ImportFile("GATEPORT.TXT", (void*)w.GetStreamPtr(), w.GetStreamSize());
+	return w;
 }
 
 //Context menu
@@ -641,54 +674,28 @@ void DivisionInfo::ContextMenu(const QPoint & pos)
 //Exports SV.T
 void DivisionInfo::ExportSVT()
 {
-	std::string version = ui.Version->text().toAscii().data();
-	version.resize(8);
-
-	Blowfish bf;
-	bf.Initialize("SILKROADVERSION", 8);
-	bf.Encode(&version[0], 4, &version[0], 8);
-
-	StreamUtility w;
-	w.Write<uint32_t>(8);				//Blowfish output size
-	w.Write<char>(&version[0], 8);		//Version
-	
-	//Calculate how much padding should be appended
-	uint16_t size = w.GetStreamSize();
-
-	//Extra padding
-	for(uint16_t x = 0; x < 1024 - size; ++x)
-		w.Write<uint8_t>(0);
-
-	w.SeekRead(0, Seek_Set);
-
-#if _DEBUG
-	printf("SV.T\n");
-	while((w.GetReadStreamSize() - w.GetReadIndex()) > 0)
+	StreamUtility w = CreateSVT();
+	if(w.GetStreamSize())
 	{
-		printf("%.2X ", w.Read<uint8_t>());
-	}
-	printf("\n\n");
-	w.SeekRead(0, Seek_Set);
-#endif
-
-	//Ask the user where to save the file
-	QString name = QFileDialog::getSaveFileName(this, "Export", QDir::currentPath(), "Text Document (*.txt)");
-	if(!name.isEmpty())
-	{
-		//Open the file for writing
-		QFile file(name);
-		if(file.open(QIODevice::WriteOnly))
+		//Ask the user where to save the file
+		QString name = QFileDialog::getSaveFileName(this, "Export", QDir::currentPath(), "Text Document (*.txt)");
+		if(!name.isEmpty())
 		{
-			//Write the data and close the file
-			file.write((const char*)w.GetStreamPtr(), w.GetStreamSize());
-			file.flush();
-			file.close();
+			//Open the file for writing
+			QFile file(name);
+			if(file.open(QIODevice::WriteOnly))
+			{
+				//Write the data and close the file
+				file.write((const char*)w.GetStreamPtr(), w.GetStreamSize());
+				file.flush();
+				file.close();
 
-			QMessageBox::information(this, "Export Success", QString("SV.T has been saved to:\n%0").arg(name));
-		}
-		else
-		{
-			QMessageBox::critical(this, "Export Error", QString("Could not open %0 for writing.").arg(name));
+				QMessageBox::information(this, "Export Success", QString("SV.T has been saved to:\n%0").arg(name));
+			}
+			else
+			{
+				QMessageBox::critical(this, "Export Error", QString("Could not open %0 for writing.").arg(name));
+			}
 		}
 	}
 }
@@ -696,76 +703,28 @@ void DivisionInfo::ExportSVT()
 //Exports DIVISIONINFO.TXT
 void DivisionInfo::ExportDivisionInfo()
 {
-	//Retrieve locale and port from the GUI
-	std::string locale = ui.Locale->text().toAscii().data();
-	std::string port = ui.Port->text().toAscii().data();
-
-	//Locale error checking
-	if(locale.empty() || locale == "0")
+	StreamUtility w = CreateDivisionInfo();
+	if(w.GetStreamSize())
 	{
-		QMessageBox::critical(this, "Error", "Locale is empty or null");
-		return;
-	}
-
-	//Port error checking
-	if(port.empty() || port == "0")
-	{
-		QMessageBox::critical(this, "Error", "Port is empty or null");
-		return;
-	}
-
-	//Create DIVISIONINFO.TXT
-	StreamUtility w;
-	w.Write<uint8_t>(boost::lexical_cast<int>(locale));			//Locale
-	w.Write<uint8_t>(Divisions.size());							//Number of divisions
-
-	for(std::map<std::string, std::vector<std::string> >::iterator itr = Divisions.begin(); itr != Divisions.end(); ++itr)
-	{
-		w.Write<uint32_t>(itr->first.length());					//Division name length
-		w.Write_Ascii(itr->first);								//Division name
-		w.Write<uint8_t>(0);									//Null terminator
-		
-		std::vector<std::string> & temp = itr->second;
-		w.Write<uint8_t>(temp.size());							//Number of gateway servers in this division
-
-		for(size_t x = 0; x < temp.size(); ++x)
+		//Ask the user where to save the file
+		QString name = QFileDialog::getSaveFileName(this, "Export", QDir::currentPath(), "Text Document (*.txt)");
+		if(!name.isEmpty())
 		{
-			w.Write<uint32_t>(temp[x].length());				//Gateway name length
-			w.Write_Ascii(temp[x]);								//Gateway server
-			w.Write<uint8_t>(0);								//Null terminator
-		}
-	}
+			//Open the file for writing
+			QFile file(name);
+			if(file.open(QIODevice::WriteOnly))
+			{
+				//Write the data and close the file
+				file.write((const char*)w.GetStreamPtr(), w.GetStreamSize());
+				file.flush();
+				file.close();
 
-	w.SeekRead(0, Seek_Set);
-
-#if _DEBUG
-	printf("DIVISIONINFO.TXT\n");
-	while((w.GetReadStreamSize() - w.GetReadIndex()) > 0)
-	{
-		printf("%.2X ", w.Read<uint8_t>());
-	}
-	printf("\n\n");
-	w.SeekRead(0, Seek_Set);
-#endif
-
-	//Ask the user where to save the file
-	QString name = QFileDialog::getSaveFileName(this, "Export", QDir::currentPath(), "Text Document (*.txt)");
-	if(!name.isEmpty())
-	{
-		//Open the file for writing
-		QFile file(name);
-		if(file.open(QIODevice::WriteOnly))
-		{
-			//Write the data and close the file
-			file.write((const char*)w.GetStreamPtr(), w.GetStreamSize());
-			file.flush();
-			file.close();
-
-			QMessageBox::information(this, "Export Success", QString("DIVISIONINFO.TXT has been saved to:\n%0").arg(name));
-		}
-		else
-		{
-			QMessageBox::critical(this, "Export Error", QString("Could not open %0 for writing.").arg(name));
+				QMessageBox::information(this, "Export Success", QString("DIVISIONINFO.TXT has been saved to:\n%0").arg(name));
+			}
+			else
+			{
+				QMessageBox::critical(this, "Export Error", QString("Could not open %0 for writing.").arg(name));
+			}
 		}
 	}
 }
@@ -773,53 +732,28 @@ void DivisionInfo::ExportDivisionInfo()
 //Exports GATEPORT.TXT
 void DivisionInfo::ExportGatePort()
 {
-	std::string port = ui.Port->text().toAscii().data();
-
-	//Port error checking
-	if(port.empty() || port == "0")
+	StreamUtility w = CreateGatePort();
+	if(w.GetStreamSize())
 	{
-		QMessageBox::critical(this, "Error", "Port is empty or null");
-		return;
-	}
-
-	StreamUtility w;
-	w.Write_Ascii(port);
-
-	//Extra null bytes
-	uint8_t extra = (8 - port.length());
-	for(uint8_t x = 0; x < extra; ++x)
-		w.Write<uint8_t>(0);
-
-	w.SeekRead(0, Seek_Set);
-
-#if _DEBUG
-	printf("GATEPORT.TXT\n");
-	while((w.GetReadStreamSize() - w.GetReadIndex()) > 0)
-	{
-		printf("%.2X ", w.Read<uint8_t>());
-	}
-	printf("\n\n");
-	w.SeekRead(0, Seek_Set);
-#endif
-
-	//Ask the user where to save the file
-	QString name = QFileDialog::getSaveFileName(this, "Export", QDir::currentPath(), "Text Document (*.txt)");
-	if(!name.isEmpty())
-	{
-		//Open the file for writing
-		QFile file(name);
-		if(file.open(QIODevice::WriteOnly))
+		//Ask the user where to save the file
+		QString name = QFileDialog::getSaveFileName(this, "Export", QDir::currentPath(), "Text Document (*.txt)");
+		if(!name.isEmpty())
 		{
-			//Write the data and close the file
-			file.write((const char*)w.GetStreamPtr(), w.GetStreamSize());
-			file.flush();
-			file.close();
+			//Open the file for writing
+			QFile file(name);
+			if(file.open(QIODevice::WriteOnly))
+			{
+				//Write the data and close the file
+				file.write((const char*)w.GetStreamPtr(), w.GetStreamSize());
+				file.flush();
+				file.close();
 
-			QMessageBox::information(this, "Export Success", QString("DIVISIONINFO.TXT has been saved to:\n%0").arg(name));
-		}
-		else
-		{
-			QMessageBox::critical(this, "Export Error", QString("Could not open %0 for writing.").arg(name));
+				QMessageBox::information(this, "Export Success", QString("DIVISIONINFO.TXT has been saved to:\n%0").arg(name));
+			}
+			else
+			{
+				QMessageBox::critical(this, "Export Error", QString("Could not open %0 for writing.").arg(name));
+			}
 		}
 	}
 }
