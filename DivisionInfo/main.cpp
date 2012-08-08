@@ -44,7 +44,7 @@ void CreateConsole(const char *winTitle)
 int main(int argc, char *argv[])
 {
 #if _DEBUG
-	CreateConsole("DivisionInfo");
+	CreateConsole(0);
 #endif
 
 	QApplication a(argc, argv);

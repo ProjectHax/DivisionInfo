@@ -79,6 +79,15 @@ private slots:
 	//Exits the program
 	void Exit() { Close(); close(); }
 
+	//Exports SV.T
+	void ExportSVT();
+
+	//Exports DIVISIONINFO.TXT
+	void ExportDivisionInfo();
+
+	//Exports GATEPORT.TXT
+	void ExportGatePort();
+
 	//Context menu
 	void ContextMenu(const QPoint & pos);
 };

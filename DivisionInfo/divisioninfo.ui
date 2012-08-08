@@ -47,7 +47,16 @@
     <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
+   <widget class="QMenu" name="menuExport">
+    <property name="title">
+     <string>Export</string>
+    </property>
+    <addaction name="actionSV_T"/>
+    <addaction name="actionDIVISIONINFO_TXT"/>
+    <addaction name="actionGATEPORT_TXT"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuExport"/>
   </widget>
   <widget class="QLineEdit" name="SilkroadPath">
    <property name="enabled">
@@ -338,6 +347,31 @@
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionExport_SV_T">
+   <property name="text">
+    <string>Export SV.T</string>
+   </property>
+  </action>
+  <action name="actionExport_DIVISIONINFO_TXT">
+   <property name="text">
+    <string>Export DIVISIONINFO.TXT</string>
+   </property>
+  </action>
+  <action name="actionSV_T">
+   <property name="text">
+    <string>SV.T</string>
+   </property>
+  </action>
+  <action name="actionDIVISIONINFO_TXT">
+   <property name="text">
+    <string>DIVISIONINFO.TXT</string>
+   </property>
+  </action>
+  <action name="actionGATEPORT_TXT">
+   <property name="text">
+    <string>GATEPORT.TXT</string>
    </property>
   </action>
  </widget>
