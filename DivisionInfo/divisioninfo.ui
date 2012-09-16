@@ -45,6 +45,8 @@
     <addaction name="actionOpen"/>
     <addaction name="actionSave"/>
     <addaction name="separator"/>
+    <addaction name="actionExtract_PK2_Key"/>
+    <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuExport">
@@ -372,6 +374,11 @@
   <action name="actionGATEPORT_TXT">
    <property name="text">
     <string>GATEPORT.TXT</string>
+   </property>
+  </action>
+  <action name="actionExtract_PK2_Key">
+   <property name="text">
+    <string>Extract PK2 Key</string>
    </property>
   </action>
  </widget>

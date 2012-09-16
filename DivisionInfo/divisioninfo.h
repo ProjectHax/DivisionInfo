@@ -12,6 +12,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 class DivisionInfo : public QWidget
 {
@@ -46,6 +47,9 @@ private:
 
 	//Creates gateway port (GATEPORT.TXT)
 	StreamUtility CreateGatePort();
+
+	//PK2 keys
+	std::vector<std::string> keys;
 
 	std::map<std::string, std::vector<std::string> > Divisions;
 
@@ -91,6 +95,9 @@ private slots:
 
 	//Exports GATEPORT.TXT
 	void ExportGatePort();
+
+	//Extracts the PK2 key from a Silkroad client
+	void ExtractPK2Key();
 
 	//Context menu
 	void ContextMenu(const QPoint & pos);

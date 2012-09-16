@@ -4,9 +4,16 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QClipboard>
+#include <QTextStream>
+#include <QStringList>
 
 #include "Stream/stream_utility.h"
 #include <boost/lexical_cast.hpp>
+#include <sstream>
+
+#if _WIN32
+	#include "windows.h"
+#endif
 
 //Constructor
 DivisionInfo::DivisionInfo(QWidget *parent, Qt::WFlags flags) : QWidget(parent, flags)
@@ -18,6 +25,7 @@ DivisionInfo::DivisionInfo(QWidget *parent, Qt::WFlags flags) : QWidget(parent, 
 	connect(ui.actionOpen, SIGNAL(triggered()), this, SLOT(Open()));
 	connect(ui.actionSave, SIGNAL(triggered()), this, SLOT(Save()));
 	connect(ui.actionExit, SIGNAL(triggered()), this, SLOT(Exit()));
+	connect(ui.actionExtract_PK2_Key, SIGNAL(triggered()), this, SLOT(ExtractPK2Key()));
 
 	//Connect export menu items
 	connect(ui.actionSV_T, SIGNAL(triggered()), this, SLOT(ExportSVT()));
@@ -27,6 +35,51 @@ DivisionInfo::DivisionInfo(QWidget *parent, Qt::WFlags flags) : QWidget(parent, 
 	//Context menu
 	connect(ui.lstDivisions, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(ContextMenu(const QPoint &)));
 	connect(ui.lstGateways, SIGNAL(customContextMenuRequested(const QPoint &)), this, SLOT(ContextMenu(const QPoint &)));
+
+	//PK2 keys
+	keys.push_back("169841");						//iSRO/SilkroadR/MySRO/vSRO
+	keys.push_back("\x32\x30\x30\x39\xC4\xEA");		//ZSZC/SWSRO
+
+	QString path = QCoreApplication::applicationFilePath();
+	path = path.mid(0, path.lastIndexOf("/")) + "/keys.txt";
+
+	QFile file(path);
+	if(file.open(QIODevice::ReadOnly))
+	{
+		QTextStream in(&file);
+		QString line = in.readLine();
+		
+		while(!line.isNull())
+		{
+			std::string temp(line.toAscii().data());
+
+			//Split the line to see if it is a hex string
+			QStringList bytes = line.split("\\x");
+
+			if(bytes.size() > 1)
+			{
+				temp.clear();
+
+				for(int x = 1; x < bytes.size(); ++x)
+				{
+					//Convert to hex
+					uint32_t hex = 0;
+					std::stringstream ss;
+					ss << std::hex << bytes[x].toAscii().data();
+					ss >> hex;
+
+					//Append
+					temp += (uint8_t)hex;
+				}
+			}
+
+			//Add the key to the list
+			keys.push_back(temp);
+
+			//Next
+			line = in.readLine();
+		}
+	}
 }
 
 //Destructor
@@ -54,8 +107,21 @@ void DivisionInfo::Open()
 		{
 			path = folders[0];
 			ui.SilkroadPath->setText(path);
+			
+			bool open = false;
+			for(size_t x = 0; x < keys.size(); ++x)
+			{
+				pk2reader.SetDecryptionKey((char*)keys[x].c_str(), keys[x].size());
 
-			if(pk2reader.Open(std::string(path.toAscii().data()) + "/Media.pk2"))
+				//Attempt to open the PK2 file
+				if(pk2reader.Open(std::string(path.toAscii().data()) + "/Media.pk2"))
+				{
+					open = true;
+					break;
+				}
+			}
+
+			if(open)
 			{
 				//Load version (SV.T)
 				if(!LoadVersion())
@@ -132,17 +198,17 @@ void DivisionInfo::Save()
 			return;
 		}
 
-		char * keys[2] =
+		/*char * keys[2] =
 		{
 			"169841",						//iSRO/SilkroadR/MySRO/vSRO
 			"\x32\x30\x30\x39\xC4\xEA"		//ZSZC/SWSRO
-		};
+		};*/
 
 		bool open = false;
-		for(uint8_t x = 0; x < 2; ++x)
+		for(size_t x = 0; x < keys.size(); ++x)
 		{
 			//Attempt to open the PK2 file
-			if(pk2writer.Open(std::string(path.toAscii().data()) + "/Media.pk2", keys[x], 6))
+			if(pk2writer.Open(std::string(path.toAscii().data()) + "/Media.pk2", (void*)keys[x].c_str(), 6))
 			{
 				open = true;
 				break;
@@ -415,6 +481,10 @@ bool DivisionInfo::LoadDivisionInfo()
 		//Division info
 		pk2reader.GetEntry("DIVISIONINFO.TXT", entry);
 		StreamUtility r(pk2reader.Extract(entry), entry.size);
+
+#if _DEBUG
+		printf("%s\n\n", DumpToString(r).c_str());
+#endif
 
 		//Locale and division count
 		uint8_t locale = r.Read<uint8_t>();
@@ -756,4 +826,82 @@ void DivisionInfo::ExportGatePort()
 			}
 		}
 	}
+}
+
+//Extracts the PK2 key from a Silkroad client
+void DivisionInfo::ExtractPK2Key()
+{
+#if _WIN32
+	QMessageBox::warning(this, "Warning", "Extracting the PK2 key/file names will only work with stock vSRO clients that are packed but have the same memory addresses.\n\nIf it does not work correctly the first time then you will need to run it again since the client needs to be loaded into memory before it can be read.");
+
+	QString file = QFileDialog::getOpenFileName(this, "sro_client.exe", "", "Executable files (*.exe)");
+	if(!file.isEmpty())
+	{
+		file = file.replace("/", "\\") + " 0 /22 0 0";
+
+		STARTUPINFOA sInfo = {0};
+		PROCESS_INFORMATION pInfo = {0};
+
+		if(!CreateProcessA(0, file.toAscii().data(), 0, 0, FALSE, 0, 0, 0, &sInfo, &pInfo))
+		{
+			QMessageBox::critical(this, "Error", QString("Unable to start %0").arg(file));
+		}
+		else
+		{
+			//Wait for the client to load/uncompress
+			for(int x = 0; x < 500; ++x)
+			{
+				QCoreApplication::processEvents();
+				Sleep(10);
+			}
+
+			QString hex_key;
+			char out[16] = {0};
+			char key[16] = {0};
+			char temp[8] = {0};
+
+			//PK2 key
+			ReadProcessMemory(pInfo.hProcess, (void*)0x0E19450, key, 8, NULL);
+
+			for(uint8_t x = 0; x < 8; ++x)
+			{
+				sprintf_s(temp, "%.2X", key[x]);
+
+				if(temp[0] == '0' && temp[1] == '0')
+					break;
+
+				hex_key += QString(temp) + " ";
+			}
+
+			QString str = QString("PK2 Key:\n[%0]\n[%1]\n\n").arg(key).arg(hex_key.mid(0, hex_key.length() - 1));
+
+			//Media
+			ReadProcessMemory(pInfo.hProcess, (void*)0x0E19458, out, 15, NULL);
+			str += QString("Media.pk2 -> %0\n").arg(out);
+
+			//Data
+			ReadProcessMemory(pInfo.hProcess, (void*)0x0DD2D94, out, 15, NULL);
+			str += QString("Data.pk2 -> %0\n").arg(out);			
+			
+			//Particles
+			ReadProcessMemory(pInfo.hProcess, (void*)0x0DD2D78, out, 15, NULL);
+			str += QString("Particles.pk2 -> %0\n").arg(out);
+			
+			//Music
+			ReadProcessMemory(pInfo.hProcess, (void*)0x0DD2D88, out, 15, NULL);
+			str += QString("Music.pk2 -> %0\n").arg(out);
+
+			//Map
+			ReadProcessMemory(pInfo.hProcess, (void*)0x0DD2DA0, out, 15, NULL);
+			str += QString("Map.pk2 -> %0").arg(out);
+			
+			//Kill the process
+			TerminateProcess(pInfo.hProcess, 0);
+			CloseHandle(pInfo.hThread);
+			CloseHandle(pInfo.hProcess);
+
+			QMessageBox::information(this, "PK2 Key Extractor", str);
+		}
+	}
+#endif
 }
